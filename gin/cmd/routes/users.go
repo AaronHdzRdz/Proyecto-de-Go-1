@@ -42,11 +42,31 @@ func SetupUserRoutes(r *gin.Engine) {
 		c.JSON(http.StatusCreated, user)
 	})
 	r.PUT("/users/:user_id", func(c *gin.Context) {
-		id := c.Param("id")
-		fmt.Println("user id", id)
+		userID := c.Param("user_id")
+		var updatedUser User
+		if err := c.ShouldBindJSON(&updatedUser); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error de parseo del body"})
+			return
+		}
+		for i, user := range users {
+			if fmt.Sprintf("%d", user.ID) == userID {
+				users[i].Name = updatedUser.Name
+				users[i].Email = updatedUser.Email
+				c.JSON(http.StatusOK, users[i])
+				return
+			}
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
 	})
 	r.DELETE("/users/:user_id", func(c *gin.Context) {
-		id := c.Param("id")
-		fmt.Println("user id", id)
+		userID := c.Param("user_id")
+		for i, user := range users {
+			if fmt.Sprintf("%d", user.ID) == userID {
+				users = append(users[:i], users[i+1:]...)
+				c.JSON(http.StatusOK, gin.H{"message": "Usuario eliminado"})
+				return
+			}
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
 	})
 }
