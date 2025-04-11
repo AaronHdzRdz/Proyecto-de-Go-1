@@ -1,72 +1,41 @@
 package routes
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-
+	"gin_http/cmd/controllers"
+	"gin_http/cmd/middleware"
+	"gin_http/cmd/services"
 	"github.com/gin-gonic/gin"
 )
 
+// User representa un usuario con ID, nombre y correo electrónico.
 type User struct {
 	ID    int    `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
 
-var users []User
+var users []User // Lista de usuarios simulada.
 
-func SetupUserRoutes(r *gin.Engine) {
-	r.GET("/users", func(c *gin.Context) {
-		userAgent := c.GetHeader("User-Agent")
-		fmt.Println("User-Agent", userAgent)
-		c.Header("x-User-Agent", "gin")
-		c.JSON((http.StatusOK), users)
-	})
-	r.POST("/users", func(c *gin.Context) {
-		body, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Error leyendo el body"})
-			return
-		}
-		var user User
-		err = json.Unmarshal(body, &user)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Error de parseo del body"})
-			return
-		}
-		user.ID = len(users) + 1
-		users = append(users, user)
+// SetupUserRoutes configura las rutas relacionadas con los usuarios.
+// Recibe el router de Gin y el servicio de usuarios como parámetros.
+func SetupUserRoutes(r *gin.Engine, userService *services.UserService) {
+	// Grupo de rutas para administradores.
+	admin := r.Group("/admin")
+	admin.Use(middleware.APIKeyAuthMiddleware()) // Aplica el middleware de autenticación a todas las rutas del grupo.
 
-		c.JSON(http.StatusCreated, user)
-	})
-	r.PUT("/users/:user_id", func(c *gin.Context) {
-		userID := c.Param("user_id")
-		var updatedUser User
-		if err := c.ShouldBindJSON(&updatedUser); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Error de parseo del body"})
-			return
-		}
-		for i, user := range users {
-			if fmt.Sprintf("%d", user.ID) == userID {
-				users[i].Name = updatedUser.Name
-				users[i].Email = updatedUser.Email
-				c.JSON(http.StatusOK, users[i])
-				return
-			}
-		}
-		c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
-	})
-	r.DELETE("/users/:user_id", func(c *gin.Context) {
-		userID := c.Param("user_id")
-		for i, user := range users {
-			if fmt.Sprintf("%d", user.ID) == userID {
-				users = append(users[:i], users[i+1:]...)
-				c.JSON(http.StatusOK, gin.H{"message": "Usuario eliminado"})
-				return
-			}
-		}
-		c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
-	})
+	//Controller
+	UserController := controllers.NewUserController(userService) // Crea una nueva instancia del controlador de usuarios.
+
+	// Ruta para obtener la lista de usuarios.
+	admin.GET("/users", UserController.GetUsers)// Obtiene la lista de usuarios del servicio y la devuelve como respuesta.
+
+	// Ruta para crear un nuevo usuario.
+	admin.POST("/users", UserController.CreateUser) // Crea un nuevo usuario y lo agrega a la lista.
+
+	// Ruta para actualizar un usuario existente.
+	admin.PUT("/users/:user_id", UserController.UpdatedUser)
+
+	// Ruta para eliminar un usuario existente.
+	admin.DELETE("/users/:user_id", UserController.DeleteUser) // Elimina un usuario de la lista.
+	// Ruta para obtener un usuario por ID.
 }
