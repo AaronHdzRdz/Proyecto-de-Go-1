@@ -26,8 +26,12 @@ func NewUserController(userService *services.UserService) *UserController {
 // GetUsers maneja la solicitud para obtener la lista de usuarios.
 // Responde con un JSON que contiene todos los usuarios.
 func (s *UserController) GetUsers(c *gin.Context) {
-	users := s.userService.GetUsers() // Obtiene la lista de usuarios del servicio.
-	c.JSON(http.StatusOK, users)      // Devuelve la lista de usuarios en formato JSON.
+	users, err := s.userService.GetUsers() // Obtiene la lista de usuarios del servicio.
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error obteniendo usuarios"}) // Maneja el error si ocurre.
+		return
+	}
+	c.JSON(http.StatusOK, users) // Devuelve la lista de usuarios en formato JSON.
 }
 
 // CreateUser maneja la solicitud para crear un nuevo usuario.
@@ -45,8 +49,12 @@ func (s *UserController) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Error deserializando el body"}) // Devuelve un error si no se puede deserializar el cuerpo.
 		return
 	}
-	user = s.userService.CreateUser(user) // Crea un nuevo usuario utilizando el servicio.
-	c.JSON(http.StatusOK, user)           // Devuelve el usuario creado como respuesta.
+	createdUser, err := s.userService.CreateUser(user) // Crea un nuevo usuario utilizando el servicio.
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creando el usuario"}) // Maneja el error si ocurre.
+		return
+	}
+	c.JSON(http.StatusOK, createdUser) // Devuelve el usuario creado como respuesta.
 }
 
 // UpdatedUser maneja la solicitud para actualizar un usuario existente.

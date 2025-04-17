@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"gin_http/cmd/database"
 	"gin_http/cmd/middleware"
 	"gin_http/cmd/routes"
 	"gin_http/cmd/services"
@@ -20,9 +21,13 @@ import (
 func main() {
 	r := gin.Default()
 
+	dbConn := database.NewDataBase()
+	defer dbConn.Db.Close()
+	
+
 	r.Use(middleware.LoggerMiddleware())
 
-	userService := services.NewUserService()
+	userService := services.NewUserService(dbConn)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
